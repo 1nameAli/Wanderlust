@@ -1,10 +1,7 @@
 const Listing = require("../models/Listing");
 const axios = require("axios");
 
-
-
-
-// Index route 
+// Index route
 module.exports.index = async (req, res, next) => {
   try {
     const allListings = await Listing.find();
@@ -60,11 +57,17 @@ module.exports.createListing = async (req, res, next) => {
       owner: req.user._id,
     });
 
-    // 🌍 Get Coordinates
+    // 🌍 Get Coordinates using Nominatim with User-Agent header
     if (req.body.listing.location) {
-      const geoURL = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(req.body.listing.location)}`;
-      const response = await axios.get(geoURL);
-      
+      const geoURL = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+        req.body.listing.location
+      )}`;
+      const response = await axios.get(geoURL, {
+        headers: {
+         "User-Agent": "wanderlust-app/1.0 (https://wanderlust-homestay.vercel.app/)", // replace with your email
+        },
+      });
+
       if (response.data.length > 0) {
         newListing.latitude = parseFloat(response.data[0].lat);
         newListing.longitude = parseFloat(response.data[0].lon);
@@ -81,7 +84,7 @@ module.exports.createListing = async (req, res, next) => {
   }
 };
 
-// Edit Listing Form Route
+// Edit Listing Form Route (with geocoding fallback)
 module.exports.editListingForm = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -96,9 +99,15 @@ module.exports.editListingForm = async (req, res, next) => {
 
     // 🌍 Fetch coordinates if missing
     if (listing.location && (!listing.latitude || !listing.longitude)) {
-      const geoURL = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(listing.location)}`;
-      const response = await axios.get(geoURL);
-      
+      const geoURL = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+        listing.location
+      )}`;
+      const response = await axios.get(geoURL, {
+        headers: {
+           "User-Agent": "wanderlust-app/1.0 (https://wanderlust-homestay.vercel.app/)", // replace with your email
+        },
+      });
+
       if (response.data.length > 0) {
         listing.latitude = parseFloat(response.data[0].lat);
         listing.longitude = parseFloat(response.data[0].lon);
@@ -118,7 +127,9 @@ module.exports.editListingForm = async (req, res, next) => {
 module.exports.updateListing = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const listing = await Listing.findByIdAndUpdate(id, req.body.listing, { new: true });
+    const listing = await Listing.findByIdAndUpdate(id, req.body.listing, {
+      new: true,
+    });
 
     if (req.file) {
       listing.image = { filename: req.file.filename, url: req.file.path };
