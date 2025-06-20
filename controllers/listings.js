@@ -1,8 +1,8 @@
 const Listing = require("../models/Listing");
 const axios = require("axios");
 
-// Index route
-module.exports.index = async (req, res, next) => {
+// Index Route
+module.exports.index = async (req, res) => {
   try {
     const allListings = await Listing.find();
     res.render("listing/index", { allListings });
@@ -13,13 +13,13 @@ module.exports.index = async (req, res, next) => {
   }
 };
 
-// New Listing Form route
+// New Listing Form Route
 module.exports.newListingForm = (req, res) => {
   res.render("listing/new");
 };
 
 // Show Listing Route
-module.exports.showListing = async (req, res, next) => {
+module.exports.showListing = async (req, res) => {
   try {
     const { id } = req.params;
     const listing = await Listing.findById(id)
@@ -42,8 +42,8 @@ module.exports.showListing = async (req, res, next) => {
   }
 };
 
-// Create New Listing Route (with Geocoding)
-module.exports.createListing = async (req, res, next) => {
+// Create New Listing Route
+module.exports.createListing = async (req, res) => {
   try {
     if (!req.file) {
       req.flash("error", "No image uploaded!");
@@ -57,18 +57,16 @@ module.exports.createListing = async (req, res, next) => {
       owner: req.user._id,
     });
 
-    // 🌍 Get Coordinates using Nominatim with User-Agent header
+    // Geocoding with User-Agent header
     if (req.body.listing.location) {
-      const geoURL = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-        req.body.listing.location
-      )}`;
+      const geoURL = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(req.body.listing.location)}`;
       const response = await axios.get(geoURL, {
         headers: {
-         "User-Agent": "wanderlust-app/1.0 (https://wanderlust-homestay.vercel.app/)", // replace with your email
+          "User-Agent": "wanderlust-app/1.0 (https://wanderlust-homestay.vercel.app/)",
         },
       });
 
-      if (response.data.length > 0) {
+      if (response.data?.length > 0) {
         newListing.latitude = parseFloat(response.data[0].lat);
         newListing.longitude = parseFloat(response.data[0].lon);
       }
@@ -84,8 +82,8 @@ module.exports.createListing = async (req, res, next) => {
   }
 };
 
-// Edit Listing Form Route (with geocoding fallback)
-module.exports.editListingForm = async (req, res, next) => {
+// Edit Listing Form
+module.exports.editListingForm = async (req, res) => {
   try {
     const { id } = req.params;
     const listing = await Listing.findById(id);
@@ -97,18 +95,15 @@ module.exports.editListingForm = async (req, res, next) => {
 
     const originalImageUrl = listing.image?.url || "/images/default.jpg";
 
-    // 🌍 Fetch coordinates if missing
     if (listing.location && (!listing.latitude || !listing.longitude)) {
-      const geoURL = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-        listing.location
-      )}`;
+      const geoURL = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(listing.location)}`;
       const response = await axios.get(geoURL, {
         headers: {
-           "User-Agent": "wanderlust-app/1.0 (https://wanderlust-homestay.vercel.app/)", // replace with your email
+          "User-Agent": "wanderlust-app/1.0 (https://wanderlust-homestay.vercel.app/)",
         },
       });
 
-      if (response.data.length > 0) {
+      if (response.data?.length > 0) {
         listing.latitude = parseFloat(response.data[0].lat);
         listing.longitude = parseFloat(response.data[0].lon);
         await listing.save();
@@ -123,8 +118,8 @@ module.exports.editListingForm = async (req, res, next) => {
   }
 };
 
-// Update Listing Route
-module.exports.updateListing = async (req, res, next) => {
+// Update Listing
+module.exports.updateListing = async (req, res) => {
   try {
     const { id } = req.params;
     const listing = await Listing.findByIdAndUpdate(id, req.body.listing, {
@@ -145,8 +140,8 @@ module.exports.updateListing = async (req, res, next) => {
   }
 };
 
-// Delete Listing Route
-module.exports.deleteListing = async (req, res, next) => {
+// Delete Listing
+module.exports.deleteListing = async (req, res) => {
   try {
     const { id } = req.params;
     await Listing.findByIdAndDelete(id);

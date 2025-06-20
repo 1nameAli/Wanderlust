@@ -6,23 +6,17 @@ const listingController = require("../controllers/listings");
 const multer = require("multer");
 const { storage } = require("../cloudConfig");
 const Listing = require("../models/Listing");
+
 const upload = multer({ storage });
 
-// GET all listings (with optional category filter) + POST new listing
+// All listings & Create listing
 router.route("/")
   .get(wrapAsync(async (req, res) => {
     const { category } = req.query;
-    let filter = {};
-    if (category) {
-      filter.category = category;
-    }
+    const filter = category ? { category } : {};
 
-    try {
-      const allListings = await Listing.find(filter);
-      res.render("listing/index", { allListings, selectedCategory: category || null });
-    } catch (err) {
-      res.status(500).send("Error loading listings: " + err.message);
-    }
+    const allListings = await Listing.find(filter);
+    res.render("listing/index", { allListings, selectedCategory: category || null });
   }))
   .post(
     isLoggedIn,
@@ -30,34 +24,27 @@ router.route("/")
     wrapAsync(listingController.createListing)
   );
 
-// Search route
-router.get("/search", async (req, res) => {
+// Search
+router.get("/search", wrapAsync(async (req, res) => {
   const query = req.query.q;
-  if (!query) {
-    return res.redirect("/listings");
-  }
+  if (!query) return res.redirect("/listings");
 
   const regex = new RegExp(query, "i");
+  const allListings = await Listing.find({
+    $or: [
+      { title: regex },
+      { description: regex },
+      { location: regex },
+    ],
+  });
 
-  try {
-    const allListings = await Listing.find({
-      $or: [
-        { title: regex },
-        { description: regex },
-        { location: regex }
-      ],
-    });
+  res.render("listing/index", { allListings, selectedCategory: null });
+}));
 
-    res.render("listing/index", { allListings, selectedCategory: null });
-  } catch (err) {
-    res.status(500).send("Error while searching: " + err.message);
-  }
-});
-
-// New Listing Form
+// New listing form
 router.get("/new", isLoggedIn, listingController.newListingForm);
 
-// Show, Update, Delete a single listing
+// Single listing view/update/delete
 router.route("/:id")
   .get(wrapAsync(listingController.showListing))
   .put(
